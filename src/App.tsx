@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PDFDocument, PDFDict, PDFName, PDFString } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 
 type Metadata = {
   [key: string]: any;
@@ -61,16 +61,16 @@ function App() {
     const arrayBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
 
-    const infoDictRef = pdfDoc.context.trailer.get(PDFName.of('Info'));
-    const metadata: Metadata = {};
-    if (infoDictRef) {
-      const infoDict = pdfDoc.context.lookup(infoDictRef) as PDFDict;
-      if (infoDict) {
-        infoDict.entries().forEach(([key, value]) => {
-          metadata[key.decodeText()] = value.toString();
-        });
-      }
-    }
+    const metadata: Metadata = {
+      title: pdfDoc.getTitle(),
+      author: pdfDoc.getAuthor(),
+      subject: pdfDoc.getSubject(),
+      creator: pdfDoc.getCreator(),
+      producer: pdfDoc.getProducer(),
+      keywords: pdfDoc.getKeywords(),
+      creationDate: pdfDoc.getCreationDate(),
+      modificationDate: pdfDoc.getModificationDate(),
+    };
 
     setMetadata(metadata);
     setModifiedFile(null);
@@ -85,36 +85,25 @@ function App() {
     const targetArrayBuffer = await targetFile.arrayBuffer();
     const targetPdfDoc = await PDFDocument.load(targetArrayBuffer);
 
-    Object.entries(sourceMetadata).forEach(([key, value]) => {
-      if (key === 'CreationDate') {
-        targetPdfDoc.setCreationDate(new Date(value));
-      } else if (key === 'ModDate') {
-        targetPdfDoc.setModificationDate(new Date(value));
-      } else if (key === 'Title') {
-        targetPdfDoc.setTitle(value);
-      } else if (key === 'Author') {
-        targetPdfDoc.setAuthor(value);
-      } else if (key === 'Subject') {
-        targetPdfDoc.setSubject(value);
-      } else if (key === 'Keywords') {
-        targetPdfDoc.setKeywords(value);
-      } else if (key === 'Creator') {
-        targetPdfDoc.setCreator(value);
-      } else if (key === 'Producer') {
-        targetPdfDoc.setProducer(value);
-      } else {
-        const infoDict = targetPdfDoc.getInfoDict();
-        infoDict.set(PDFName.of(key), PDFString.of(value));
-      }
-    });
+    if (sourceMetadata.title) targetPdfDoc.setTitle(sourceMetadata.title);
+    if (sourceMetadata.author) targetPdfDoc.setAuthor(sourceMetadata.author);
+    if (sourceMetadata.subject) targetPdfDoc.setSubject(sourceMetadata.subject);
+    if (sourceMetadata.creator) targetPdfDoc.setCreator(sourceMetadata.creator);
+    if (sourceMetadata.producer) targetPdfDoc.setProducer(sourceMetadata.producer);
+    if (sourceMetadata.keywords) targetPdfDoc.setKeywords(sourceMetadata.keywords);
+    if (sourceMetadata.creationDate) targetPdfDoc.setCreationDate(sourceMetadata.creationDate);
+    if (sourceMetadata.modificationDate) targetPdfDoc.setModificationDate(sourceMetadata.modificationDate);
     
-    const infoDict = targetPdfDoc.context.lookup(targetPdfDoc.context.trailer.get(PDFName.of('Info'))) as PDFDict;
-    const newTargetMetadata: Metadata = {};
-    if (infoDict) {
-      infoDict.entries().forEach(([key, value]) => {
-        newTargetMetadata[key.decodeText()] = value.toString();
-      });
-    }
+    const newTargetMetadata: Metadata = {
+      title: targetPdfDoc.getTitle(),
+      author: targetPdfDoc.getAuthor(),
+      subject: targetPdfDoc.getSubject(),
+      creator: targetPdfDoc.getCreator(),
+      producer: targetPdfDoc.getProducer(),
+      keywords: targetPdfDoc.getKeywords(),
+      creationDate: targetPdfDoc.getCreationDate(),
+      modificationDate: targetPdfDoc.getModificationDate(),
+    };
     setTargetMetadata(newTargetMetadata);
 
     const fileBytes = await targetPdfDoc.save();
@@ -126,7 +115,7 @@ function App() {
       return;
     }
 
-    const blob = new Blob([modifiedFile], { type: 'application/octet-stream' });
+    const blob = new Blob([new Uint8Array(modifiedFile)], { type: 'application/octet-stream' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'translated-metadata.dat';
